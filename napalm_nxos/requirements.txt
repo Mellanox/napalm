@@ -1,0 +1,5 @@
+napalm-base>=0.24.0
+pynxos
+netaddr
+future
+scp
