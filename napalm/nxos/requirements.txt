@@ -1,0 +1,5 @@
+pynxos
+netmiko>=1.4.2
+netaddr
+future
+scp
