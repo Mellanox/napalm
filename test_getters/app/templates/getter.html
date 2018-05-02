@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+
+      <div class="napalm-center">
+        <h1>{{ getter }}</h1>
+        <p>Please paste the required output in the field(s) below.
+      </div>
+
+<form method="POST">
+
+
+{% for entry in form_data %}
+  <div class="form-group">
+    <label for="{{ entry.id }}">{{ entry.id }}</label>
+    <textarea class="form-control" name="{{ entry.id }}" id="{{ entry.id }}" rows="10">{{ entry.data }} </textarea>
+  </div>
+
+{% endfor %}
+
+
+{% if missing_command %}
+
+  <div class="form-group">
+    <label for="{{ missing_command_id }}">{{ missing_command }}</label>
+    <textarea class="form-control" name="{{ missing_command_id }}" id="{{missing_command_id }}" rows="10"></textarea>
+  </div>
+
+{% endif %}
+
+
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+
+{% if data %}
+      <div class="napalm-center">
+        <h1>{{ getter }}</h1>
+      </div>
+            <pre><code class="json">{{ data }}</code></pre>
+
+{% endif %}
+
+{% if exception %}
+      <div class="napalm-center">
+        <h1>{{ exception }}</h1>
+            <p>{{ traceback }}</p>
+      </div>
+{% endif %}
+
+{% endblock %}
+

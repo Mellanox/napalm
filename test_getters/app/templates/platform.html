@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+      <div class="napalm-center">
+        <h1>Choose which getter to test</h1>
+{% for getter in getters %}
+            <p><a href="{{ url_for('main.getter', platform=platform, getter=getter) }}">{{ getter }}</p>
+{% endfor %}
+      </div>
+
+{% endblock %}
+

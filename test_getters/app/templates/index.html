@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+      <div class="napalm-center">
+        <h1>Drivers</h1>
+{% for driver in drivers %}
+            <p><a href="{{ url_for('main.platform', platform=driver) }}">{{ driver }}</p>
+{% endfor %}
+      </div>
+
+{% endblock %}
+
