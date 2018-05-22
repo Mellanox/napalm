@@ -1521,12 +1521,15 @@ class JunOSDriver(NetworkDriver):
 
         return mac_address_table
 
-    def get_route_to(self, destination='', protocol=''):
+    def get_route_to(self, destination='', protocol='', longer=False):
         """Return route details to a specific destination, learned from a certain protocol."""
         routes = {}
 
         if not isinstance(destination, py23_compat.string_types):
             raise TypeError('Please specify a valid destination!')
+
+        if longer:
+            raise NotImplementedError("Longer prefixes not yet supported on JunOS")
 
         if protocol and isinstance(destination, py23_compat.string_types):
             protocol = protocol.lower()

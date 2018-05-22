@@ -1291,12 +1291,15 @@ class IOSXRDriver(NetworkDriver):
 
         return mac_table
 
-    def get_route_to(self, destination='', protocol=''):
+    def get_route_to(self, destination='', protocol='', longer=False):
 
         routes = {}
 
         if not isinstance(destination, py23_compat.string_types):
             raise TypeError('Please specify a valid destination!')
+
+        if longer:
+            raise NotImplementedError("Longer prefixes not yet supported for IOS-XR")
 
         protocol = protocol.lower()
         if protocol == 'direct':
