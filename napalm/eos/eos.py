@@ -1051,7 +1051,7 @@ class EOSDriver(NetworkDriver):
 
         return mac_table
 
-    def get_route_to(self, destination='', protocol=''):
+    def get_route_to(self, destination='', protocol='', longer=False):
         routes = {}
 
         # Placeholder for vrf arg
@@ -1076,12 +1076,15 @@ class EOSDriver(NetworkDriver):
 
         commands = []
         for _vrf in vrfs:
-            commands.append('show ip{ipv} route vrf {_vrf} {destination} {protocol} detail'.format(
-                ipv=ipv,
-                _vrf=_vrf,
-                destination=destination,
-                protocol=protocol,
-            ))
+            commands.append(
+                'show ip{ipv} route vrf {_vrf} {destination} {longer} {protocol} detail'.format(
+                    ipv=ipv,
+                    _vrf=_vrf,
+                    destination=destination,
+                    longer='longer-prefixes' if longer else '',
+                    protocol=protocol,
+                ),
+            )
 
         commands_output = self.device.run_commands(commands)
 
