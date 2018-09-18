@@ -33,7 +33,7 @@ from netaddr.core import AddrFormatError
 
 # third party libs
 import pyeapi
-from pyeapi.eapilib import ConnectionError
+from pyeapi.eapilib import ConnectionError, CommandError
 
 # NAPALM base
 import napalm.base.helpers
@@ -1087,6 +1087,7 @@ class EOSDriver(NetworkDriver):
             )
 
         commands_output = self.device.run_commands(commands)
+        vrf_cache = {}
 
         for _vrf, command_output in zip(vrfs, commands_output):
             if ipv == 'v6':
@@ -1119,22 +1120,51 @@ class EOSDriver(NetworkDriver):
                         nexthop_ip = napalm.base.helpers.ip(next_hop.get('nexthopAddr'))
                         nexthop_interface_map[nexthop_ip] = next_hop.get('interface')
                     metric = route_details.get('metric')
-                    command = 'show ip{ipv} bgp {destination} detail vrf {_vrf}'.format(
-                        ipv=ipv,
-                        destination=prefix,
-                        _vrf=_vrf
-                    )
-                    vrf_details = self.device.run_commands([command])[0].get(
-                        'vrfs', {}).get(_vrf, {})
+                    if _vrf not in vrf_cache.keys():
+                        try:
+                            command = 'show ip{ipv} bgp {dest} {longer} detail vrf {_vrf}'.format(
+                                ipv=ipv,
+                                dest=destination,
+                                longer='longer-prefixes' if longer else '',
+                                _vrf=_vrf
+                            )
+                            vrf_cache.update(
+                                {
+                                    _vrf: self.device.run_commands(
+                                        [command]
+                                    )[0].get('vrfs', {}).get(_vrf, {}),
+                                }
+                            )
+                        except CommandError:
+                            # Newer EOS can't mix longer-prefix and detail
+                            command = 'show ip{ipv} bgp {dest} {longer} vrf {_vrf}'.format(
+                                ipv=ipv,
+                                dest=destination,
+                                longer='longer-prefixes' if longer else '',
+                                _vrf=_vrf
+                            )
+                            vrf_cache.update(
+                                {
+                                    _vrf: self.device.run_commands(
+                                        [command]
+                                    )[0].get('vrfs', {}).get(_vrf, {}),
+                                }
+                            )
+
+                    vrf_details = vrf_cache.get(_vrf)
                     local_as = vrf_details.get('asn')
                     bgp_routes = vrf_details.get(
                         'bgpRouteEntries', {}).get(prefix, {}).get('bgpRoutePaths', [])
                     for bgp_route_details in bgp_routes:
                         bgp_route = route.copy()
                         as_path = bgp_route_details.get('asPathEntry', {}).get('asPath', u'')
-                        remote_as = int(as_path.strip("()").split()[-1])
-                        remote_address = napalm.base.helpers.ip(bgp_route_details.get(
-                            'routeDetail', {}).get('peerEntry', {}).get('peerAddr', ''))
+                        stripped_path = as_path.translate({ord(c): None for c in "()ie?"})
+                        remote_as = int(stripped_path.split()[-1])
+                        try:
+                            remote_address = napalm.base.helpers.ip(bgp_route_details.get(
+                                'routeDetail', {}).get('peerEntry', {}).get('peerAddr', ''))
+                        except AddrFormatError:
+                            remote_address = None
                         local_preference = bgp_route_details.get('localPreference')
                         next_hop = napalm.base.helpers.ip(bgp_route_details.get('nextHop'))
                         active_route = bgp_route_details.get('routeType', {}).get('active', False)
