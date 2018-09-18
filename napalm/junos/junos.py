@@ -190,6 +190,8 @@ class JunOSDriver(NetworkDriver):
             'protect',
             'rename',
             'unprotect',
+            'edit',
+            'top',
         ]
         if config.strip().startswith('<'):
             return 'xml'
@@ -298,7 +300,12 @@ class JunOSDriver(NetworkDriver):
             for iface in interfaces.keys():
                 result[iface] = {
                     'is_up': interfaces[iface]['is_up'],
-                    'is_enabled': interfaces[iface]['is_enabled'],
+                    # For physical interfaces <admin-status> will always be there, so just
+                    # return the value interfaces[iface]['is_enabled']
+                    # For logical interfaces if <iff-down> is present interface is disabled,
+                    # otherwise interface is enabled
+                    'is_enabled': (True if interfaces[iface]['is_enabled'] is None
+                                   else interfaces[iface]['is_enabled']),
                     'description': (interfaces[iface]['description'] or u''),
                     'last_flapped': float((interfaces[iface]['last_flapped'] or -1)),
                     'mac_address': napalm.base.helpers.convert(
@@ -628,9 +635,11 @@ class JunOSDriver(NetworkDriver):
                 if not uptime_table_items:
                     uptime_table_items = _get_uptime_table(instance)
                 for neighbor, uptime in uptime_table_items:
-                    if neighbor not in bgp_neighbor_data[instance_name]['peers']:
-                        bgp_neighbor_data[instance_name]['peers'][neighbor] = {}
-                    bgp_neighbor_data[instance_name]['peers'][neighbor]['uptime'] = uptime[0][1]
+                    normalized_neighbor = napalm.base.helpers.ip(neighbor)
+                    if normalized_neighbor not in bgp_neighbor_data[instance_name]['peers']:
+                        bgp_neighbor_data[instance_name]['peers'][normalized_neighbor] = {}
+                    bgp_neighbor_data[instance_name]['peers'][normalized_neighbor]['uptime'] = \
+                        uptime[0][1]
 
         # Commenting out the following sections, till Junos
         #   will provide a way to identify the routing instance name
@@ -749,13 +758,17 @@ class JunOSDriver(NetworkDriver):
                 'default': rpc_call_with_information,
                 'EX9208': rpc_call_without_information,
                 'EX3400': rpc_call_without_information,
+                'EX4300-48P': rpc_call_without_information,
                 'EX4600-40F': rpc_call_without_information,
                 'QFX5110-48S-4C': rpc_call_without_information,
                 'QFX10002-36Q': rpc_call_without_information,
-                'QFX10008': rpc_call_without_information
+                'QFX10008': rpc_call_without_information,
+                'EX2300-24P': rpc_call_without_information,
+                'EX2300-C-12P': rpc_call_without_information
             },
             'SRX_BRANCH': {
-                'default': rpc_call_with_information
+                'default': rpc_call_with_information,
+                'SRX300': rpc_call_without_information
             },
             'SRX_HIGHEND': {
                 'default': rpc_call_without_information
@@ -1609,7 +1622,7 @@ class JunOSDriver(NetworkDriver):
             d = {}
             # next_hop = route[0]
             d = {elem[0]: elem[1] for elem in route[1]}
-            destination = napalm.base.helpers.ip(d.pop('destination', ''))
+            destination = d.pop('destination', '')
             prefix_length = d.pop('prefix_length', 32)
             destination = '{d}/{p}'.format(
                 d=destination,
